@@ -206,7 +206,7 @@ def parse_args():
         "--model",
         help="path to openvino .xml file",
         type=str,
-        default="model_20221222_9229_664304.xml",
+        default="weights/openvino/model_20221222_9229_664304.xml",
     )
     parser.add_argument(
         "--image",

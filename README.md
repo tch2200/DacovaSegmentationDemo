@@ -1,21 +1,37 @@
 
 # Demo DacovaSegmentation
 
-## 1. Install libs + download weight
+## 1. Install libs
 ```
 pip install -r requirements.txt
 ```
 
-## 2. Run infer openvino-python
+## 2. Run infer openvino python
 ```
-sh scripts/infer.sh
+python infer_openvino.py
 ```
-## 3. Run infer openvino-cpp
+## 3. Run infer onnx python
 ```
-docker build cpp -t openvino_segmentation
+python infer_onnx.py
+```
+## 4. Run infer openvino-cpp
+```
+docker build openvino_cpp -t openvino_segmentation
 docker run -it --rm -v $(pwd):/segment-openvino openvino_segmentation
 
-cd cpp 
+cd segment-openvino/openvino_cpp 
+mkdir build 
+cd build
+cmake ../ -O ./
+make 
+./main
+```
+## 5. Run infer onnx-cpp
+```
+docker build onnx_cpp -t onnx_segmentation
+docker run -it --rm -v $(pwd):/segment-onnx onnx_segmentation
+
+cd segment-onnx/onnx_cpp 
 mkdir build 
 cd build
 cmake ../ -O ./
