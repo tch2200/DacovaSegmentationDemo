@@ -11,7 +11,7 @@ from openvino.runtime import Core, Layout, Type
 from openvino.preprocess import PrePostProcessor
 
 class OpenVinoInfer:
-    def __init__(self, model_path, model_config=None, device="CPU", layout="NHWC"):
+    def __init__(self, model_path, device="CPU", layout="NHWC"):
         """
         Args:
             model_path (str): model .xml file
@@ -136,12 +136,11 @@ class OpenVinoInfer:
             list_probability_threshold = [
                 default_threshold for _ in range(len(self.class_names))
             ]
-        print("list_probability_threshold: ", list_probability_threshold)
+        
         prob = output[0]  # hxwxclass
 
         mask = np.argmax(prob, 2)  # h,w - get class label for each pixel
-        
-        # prob_max = np.max(prob, 2)
+                
         for i in range(mask.shape[0]):
             for j in range(mask.shape[1]):
                 tmp = mask[i, j]
@@ -172,6 +171,7 @@ class OpenVinoInfer:
             class_names=self.class_names,
             image_name="demo_python.jpg",
             mode=mode,
+            folder_to_save="examples/output_openvino_python"
         )
 
         return {"predictions": result_coco}
@@ -206,13 +206,13 @@ def parse_args():
         "--model",
         help="path to openvino .xml file",
         type=str,
-        default="weights/openvino/model_20221222_9229_664304.xml",
+        default="weights/openvino/model_2023110_191736_351410.xml",
     )
     parser.add_argument(
         "--image",
         help="path to image",
         type=str,
-        default="./examples/inputs/demo.jpg",
+        default="./examples/imgs/demo.jpg",
     )
 
     return parser.parse_args()
@@ -233,7 +233,7 @@ if __name__ == "__main__":
         result = infer(
             image,
             roi_area=[0, 0, 11900.1, 11900.2],
-            threshold=0.5,
+            threshold=0.1,
             threshold_dict={"hole": 0.6, "kizu": 0.4},
             is_get_image_result=True,
         )

@@ -34,7 +34,8 @@ def convert_mask_to_coco_annotation_format(
         mode="inference",
         threshold_area=1, 
         threshold_width=1, 
-        threshold_height=1
+        threshold_height=1,
+        folder_to_save=""
     ):        
         mask_list = []
         for i in range(1, len(class_names)):
@@ -73,15 +74,12 @@ def convert_mask_to_coco_annotation_format(
                 "category_id": idx+1,
                 "category": class_names[idx+1],
                 "image_id": image_id
-            })
-
-        print("Label info: ", labels_info)
+            })        
 
         if mode == "inference":
             result_image = visualize_result_on_image(img_origin, labels_info)
             result_image = cv2.cvtColor(result_image, cv2.COLOR_RGB2BGR)            
-
-            folder_to_save = "examples/output_openvino_python"
+            
             os.makedirs(folder_to_save, exist_ok=True)
             path_to_save = os.path.join(folder_to_save, image_name)
             cv2.imwrite(path_to_save, cv2.cvtColor(result_image, cv2.COLOR_RGB2BGR))

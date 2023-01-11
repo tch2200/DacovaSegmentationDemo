@@ -1,13 +1,11 @@
 import argparse
-import os
 import cv2
 import numpy as np
 import logging as log
-import sys
-import json
+import sys, json
 import utils
-import matplotlib.pyplot as plt
 import time
+from pathlib import Path
 
 import onnxruntime as rt
 
@@ -15,8 +13,7 @@ log.basicConfig(
     format="[ %(levelname)s ] %(message)s", level=log.INFO, stream=sys.stdout
 )
 
-
-class OpenVinoInfer:
+class OnnxInfer:
     def __init__(self, onnx_file, model_config=None, device="CPU"):
         """
 
@@ -25,10 +22,12 @@ class OpenVinoInfer:
             input_size (int): with = height
             model_config (str): model config .json
         """
+        config_path = Path(onnx_file).with_suffix(".json")
+
         self.onnx_file = onnx_file
         self.device = device.lower()
 
-        self.config = self.load_config(config_path=model_config)
+        self.config = self.load_config(config_path=config_path)
         self.input_size = self.__get_input_size(self.config)  # [h, w, c]
         assert len(self.input_size) == 3, "length of input size must be 3"
 
@@ -95,9 +94,8 @@ class OpenVinoInfer:
         image = image[ymin:ymax, xmin:xmax, :]
         image, preprocessed_params = utils.resize_and_padding(
             image, self.input_size[:2]
-        )
-        print("image resize: ", image[0][:10])
-        cv2.imwrite("image_resized_py.jpg", image)
+        )        
+        
         image = utils.normalize_image(
             image,
             mean=self.preprocessing_config["mean"],
@@ -130,9 +128,6 @@ class OpenVinoInfer:
         Returns:
             _type_: _description_
         """
-
-        # output = next(iter(output.values()))
-        # print(output[0].shape)
         output = output[0]
 
         if prob_dict:
@@ -143,16 +138,11 @@ class OpenVinoInfer:
             list_probability_threshold = [
                 default_threshold for _ in range(len(self.class_names))
             ]
-        print("list_probability_threshold: ", list_probability_threshold)
+
         prob = output[0]  # hxwxclass
-
-        print("Output prob shape: ", prob.shape)
-        print("Output prob: ", prob)
-
+        
         mask = np.argmax(prob, 2)  # h,w - get class label for each pixel
-        print(mask)
-        print("Mask first output: ", (mask != 0).sum())
-        # prob_max = np.max(prob, 2)
+             
         for i in range(mask.shape[0]):
             for j in range(mask.shape[1]):
                 tmp = mask[i, j]
@@ -181,10 +171,10 @@ class OpenVinoInfer:
             image_origin,
             mask_origin,
             class_names=self.class_names,
-            image_name="default.jpg",
+            image_name="demo_python.jpg",
             mode=mode,
+            folder_to_save="examples/output_onnx_python"
         )
-
         return {"predictions": result_coco}
 
     def __call__(
@@ -207,15 +197,7 @@ class OpenVinoInfer:
         input_tensor, preprocess_param, roi_area, ori_img = self.pre_processing(
             image, roi_area
         )
-
-        
-        # input_tensor = np.random.randn(1, 320, 320, 3)
-        # print("Input tensor shape: ", input_tensor.shape)  #1*320*320*3
-        print("Input type: ", input_tensor.dtype)
-        print("Input tensor: ", input_tensor)
-        
         output = self.model.run(None, {self.input_name: input_tensor})
-        print(output)
 
         result = self.post_processing(
             image_origin=ori_img,
@@ -228,37 +210,28 @@ class OpenVinoInfer:
         )
         return result
 
-
 def parse_args():
     parser = argparse.ArgumentParser(description="")
     parser.add_argument(
         "--model",
         help="path to onnx model",
         type=str,
-        default="weights/onnx/checkpoint_segmentation.onnx",
-    )
-    parser.add_argument(
-        "--config",
-        help="path to json config of h5 model",
-        type=str,
-        default="/mnt/Sources/vimage_v1/script_backend/checkpoint_anomaly/best_line_1.json",
+        default="weights/onnx/model_2023110_191736_351410.onnx",
     )
 
     parser.add_argument(
         "--image",
-        help="path to model config .json",
+        help="path to image",
         type=str,
-        default="/home/dungdv/Downloads/Telegram Desktop/2P_320/NG/NG19.jpg",
+        default="./examples/imgs/demo.jpg",
     )
 
     return parser.parse_args()
 
-
 if __name__ == "__main__":
     args = parse_args()
-    infer = OpenVinoInfer(
-        onnx_file=args.model, 
-        model_config=args.config, 
+    infer = OnnxInfer(
+        onnx_file=args.model,         
         device="CPU", 
     )
 
@@ -273,39 +246,5 @@ if __name__ == "__main__":
             threshold=0.1,
             threshold_dict={"hole": 0.6, "kizu": 0.4},
             is_get_image_result=True,
-        )
-        print(result)
-        # mask_new, contours, hierarchy = cv2.findContours(np.asarray(masks), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        ### VISUALIZE RESULT ###
-        # segment = result[1]['segmentation']
-        # bbox = result[1]['bbox']
-        # heatmap = result[1]['heatmap']
-
-        # image_bin = np.zeros_like(image)
-        # contours = [np.array(seg).reshape((-1, 2)) for seg in segment]
-        # cv2.drawContours(image_bin, np.array(contours), -1, (255, 255, 255), 3)
-
-        # image_draw_box = image.copy()
-        # [cv2.rectangle(image_draw_box, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 1) for box in bbox]
-
-        # num_cols = 4
-        # figure_size = (num_cols * 5, 5)
-        # figure, axis = plt.subplots(1, num_cols, figsize=figure_size)
-        # figure.subplots_adjust(right=0.9)
-        # axis[0].imshow(image, vmin=0, vmax=255)
-        # axis[0].title.set_text("original image")
-
-        # axis[1].imshow(heatmap, cmap='viridis')
-        # axis[1].title.set_text("Predicted Heat Map")
-
-        # axis[2].imshow(image_bin, cmap='gray', vmin=0, vmax=255)
-        # axis[2].title.set_text("Predicted mask")
-
-        # axis[3].imshow(image_draw_box, vmin=0, vmax=255)
-        # axis[3].title.set_text("Predicted bbox")
-
-        # figure.canvas.draw()
-        # plt.savefig("img.jpg")
-
-        print("process time: {}".format(time.time() - start_time))
-        # break
+        )        
+        print("process time: {}".format(time.time() - start_time))        
